@@ -1,0 +1,4 @@
+assets/*
+.hfcache/*
+outputs/*
+wanda/llm_weights/*
