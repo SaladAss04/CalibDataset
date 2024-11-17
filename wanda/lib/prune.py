@@ -129,8 +129,8 @@ def prune_wanda(args, model, tokenizer, device=torch.device("cuda"), prune_n=0, 
     model.config.use_cache = False 
 
     print("loading calibdation data")
-    #dataloader, _, token_loss_mask = get_loaders("c4_unclipped_high",nsamples=args.nsamples,seed=args.seed,seqlen=model.seqlen,tokenizer=tokenizer)
-    dataloader, _ = get_loaders("c4_unclipped_high",nsamples=args.nsamples,seed=args.seed,seqlen=model.seqlen,tokenizer=tokenizer)
+    dataloader, _, token_loss_mask = get_loaders("c4_sorted_high",nsamples=args.nsamples,seed=args.seed,seqlen=model.seqlen,tokenizer=tokenizer)
+    #dataloader, _ = get_loaders("c4_unclipped_high",nsamples=args.nsamples,seed=args.seed,seqlen=model.seqlen,tokenizer=tokenizer)
     print(len(dataloader))
     print("dataset loading complete")
     with torch.no_grad():

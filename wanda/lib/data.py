@@ -70,7 +70,7 @@ def get_c4(nsamples, seed, seqlen, tokenizer):
 def get_c4_unclipped(nsamples, seed, seqlen, tokenizer, strat = "mid"):
     # Load train and validation datasets
     try:
-        data_df = pd.read_json('../assets/dataset/c4_min_annotated_noclip.jsonl', lines=True)
+        data_df = pd.read_json('../assets/dataset/c4_std_annotated_picked.jsonl', lines=True)
     except:
         annotate('../assets/dataset/c4_std.jsonl', seqlen, clip = False)
         data_df = pd.read_json('../assets/dataset/c4_std_annotated_noclip.jsonl', lines=True)
@@ -89,16 +89,18 @@ def get_c4_unclipped(nsamples, seed, seqlen, tokenizer, strat = "mid"):
         sorted_data = sorted_data[:n // 3]
     elif strat == "high":
         sorted_data = sorted(data, key=lambda x: x["value_rank"])
-        sorted_data = sorted_data[2 * n // 3 + 1:]    
+        sorted_data = sorted_data[5 * n // 6 + 1:]    
     else:
         sorted_data = data
     # Generate samples from training set
+    print(len(sorted_data))
     random.seed(seed)
     trainloader = []
     for _ in range(nsamples):
         while True:
             i = random.randint(0, len(sorted_data) - 1)
             trainenc = tokenizer(sorted_data[i]['text'], return_tensors='pt')
+            print(trainenc.input_ids.shape[1] , seqlen)
             if trainenc.input_ids.shape[1] > seqlen:
                 break
         i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
@@ -116,7 +118,7 @@ def get_c4_unclipped(nsamples, seed, seqlen, tokenizer, strat = "mid"):
 
 def get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat = "mid"):
     try:
-        data_df = pd.read_json('../assets/dataset/c4_min_annotated.jsonl', lines=True)
+        data_df = pd.read_json('../assets/dataset/c4_large_annotated_picked.jsonl', lines=True)
     except:
         annotate('../assets/dataset/c4_large.jsonl', seqlen)
         data_df = pd.read_json('../assets/dataset/c4_large_annotated_picked.jsonl', lines=True)
@@ -141,13 +143,14 @@ def get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat = "mid"):
         sorted_data = sorted_data[:n // 3]
     elif strat == "high":
         sorted_data = sorted(data, key=lambda x: x["value_rank"])
-        sorted_data = sorted_data[2 * n // 3 + 1:]    
+        sorted_data = sorted_data[11 * n // 12 + 1:]    
     else:
         sorted_data = data
     
     random.seed(seed)
     trainloader = []
     token_losses = []
+    print(len(sorted_data))
     for _ in tqdm(range(nsamples)):
         token_loss = None
         range_i, range_j = None, None

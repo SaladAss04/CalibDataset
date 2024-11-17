@@ -1,4 +1,4 @@
-from loss_model import *
+from .loss_model import *
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import json, os, torch, random
 from tqdm import tqdm
@@ -19,7 +19,7 @@ def annotate(jsonl_path, seqlen, loss_model = None, clip = True):
     for sample in tqdm(data, desc="Calculating losses"):
         # 对每个样本的文本进行编码
         torch.cuda.empty_cache()
-        inputs = tokenizer(sample['text'], return_tensors="pt", padding=True, max_length = 7000, truncation=True)
+        inputs = tokenizer(sample['text'], return_tensors="pt", padding=True, max_length = seqlen+1, truncation=True)
         
         if clip:
             if inputs.input_ids.shape[1] - seqlen - 1 < 1:
