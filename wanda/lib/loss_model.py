@@ -39,13 +39,12 @@ def add_sample_loss(outputs, inputs):
         shift_labels = labels[..., 1:].contiguous()
             # 计算逐 token 的损失
         loss_fn = torch.nn.CrossEntropyLoss(reduction='none')
+        shift_logits = shift_logits.float()
         token_losses = loss_fn(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
             # 将 token loss 重塑为 (batch_size, sequence_length) 形状
         token_losses = token_losses.view(labels.size(0), -1)
             # 计算每个样本的总 loss
         sample_losses = token_losses.mean(dim=1)
-
-        #print("sample losses: ", sample_losses)
         return {'loss': outputs.loss, 'token_losses': token_losses, 'sample_losses': sample_losses}
     else:
         print("labels not found")

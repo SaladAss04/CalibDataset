@@ -67,6 +67,35 @@ def get_c4(nsamples, seed, seqlen, tokenizer):
     valenc = TokenizerWrapper(valenc)
     return trainloader, valenc
 
+def get_c4_baseline(nsamples, seed, seqlen, tokenizer, file = "c4_min"):
+    # Load train and validation datasets
+    #traindata = load_dataset('allenai/c4', 'allenai--c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train')
+    data_df = pd.read_json('../assets/dataset/' + file + '.jsonl', lines=True)
+    traindata = Dataset.from_pandas(data_df)
+    val_df = pd.read_json('../assets/dataset/c4_val.jsonl', lines=True)
+    valdata = Dataset.from_pandas(val_df)
+    # Generate samples from training set
+    random.seed(seed)
+    trainloader = []
+    for _ in range(nsamples):
+        while True:
+            i = random.randint(0, len(traindata) - 1)
+            trainenc = tokenizer(traindata[i]['text'], return_tensors='pt')
+            if trainenc.input_ids.shape[1] > seqlen:
+                break
+        i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
+        j = i + seqlen
+        inp = trainenc.input_ids[:, i:j]
+        tar = inp.clone()
+        tar[:, :-1] = -100
+        trainloader.append((inp, tar))
+
+    # Prepare validation dataset
+    valenc = tokenizer(' '.join(valdata[:1100]['text']), return_tensors='pt')
+    valenc = valenc.input_ids[:, :(256 * seqlen)]
+    valenc = TokenizerWrapper(valenc)
+    return trainloader, valenc
+
 def get_c4_unclipped(nsamples, seed, seqlen, tokenizer, strat = "mid"):
     # Load train and validation datasets
     try:
@@ -116,12 +145,12 @@ def get_c4_unclipped(nsamples, seed, seqlen, tokenizer, strat = "mid"):
     valenc = TokenizerWrapper(valenc)
     return trainloader, valenc
 
-def get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat = "mid"):
+def get_c4_sorted(nsamples, seed, seqlen, tokenizer, model, strat = "mid", file = "c4_min"):
     try:
-        data_df = pd.read_json('../assets/dataset/c4_large_annotated_picked.jsonl', lines=True)
+        data_df = pd.read_json('../assets/dataset/' + file + '_annotated_picked.jsonl', lines=True)
     except:
-        annotate('../assets/dataset/c4_large.jsonl', seqlen)
-        data_df = pd.read_json('../assets/dataset/c4_large_annotated_picked.jsonl', lines=True)
+        annotate('../assets/dataset/' + file + '.jsonl', seqlen, tokenizer = tokenizer, loss_model = model)
+        data_df = pd.read_json('../assets/dataset/' + file + '_annotated_picked.jsonl', lines=True)
 
     val_df = pd.read_json('../assets/dataset/c4_val.jsonl', lines=True)
 
@@ -143,7 +172,7 @@ def get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat = "mid"):
         sorted_data = sorted_data[:n // 3]
     elif strat == "high":
         sorted_data = sorted(data, key=lambda x: x["value_rank"])
-        sorted_data = sorted_data[11 * n // 12 + 1:]    
+        sorted_data = sorted_data[5 * n // 6 + 1:]    
     else:
         sorted_data = data
     
@@ -157,8 +186,8 @@ def get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat = "mid"):
         while True:
             i = random.randint(0, len(sorted_data) - 1)
             trainenc = tokenizer(sorted_data[i]['text'], return_tensors='pt')
-            if trainenc.input_ids.shape[1] > seqlen:
-                token_loss = sorted_data[i]['token_losses']
+            token_loss = sorted_data[i]['token_losses']
+            if trainenc.input_ids.shape[1] >= seqlen and len(token_loss) > 0:
                 range_i, range_j = sorted_data[i]['range'][0], sorted_data[i]['range'][1]
                 break
         inp = trainenc.input_ids[:, range_i:range_j]
@@ -180,20 +209,22 @@ def get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat = "mid"):
     return trainloader, valenc, token_loss_mask
 
 # Function to select the appropriate loader based on dataset name
-def get_loaders(name, nsamples=128, seed=0, seqlen=2048, tokenizer=None):
+def get_loaders(name, nsamples=128, seed=0, seqlen=2048, tokenizer=None, model=None):
     if 'wikitext2' in name:
         return get_wikitext2(nsamples, seed, seqlen, tokenizer)
     if "c4_sorted_mid" in name:
-        return get_c4_sorted(nsamples, seed, seqlen, tokenizer)    
+        return get_c4_sorted(nsamples, seed, seqlen, tokenizer, model)    
     if "c4_sorted_low" in name:
-        return get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat="low")
+        return get_c4_sorted(nsamples, seed, seqlen, tokenizer, model, strat="low")
     if "c4_sorted_high" in name:
-        return get_c4_sorted(nsamples, seed, seqlen, tokenizer, strat="high")    
+        return get_c4_sorted(nsamples, seed, seqlen, tokenizer, model, strat="high")    
     if "c4_unclipped_mid" in name:
         return get_c4_unclipped(nsamples, seed, seqlen, tokenizer)    
     if "c4_unclipped_low" in name:
         return get_c4_unclipped(nsamples, seed, seqlen, tokenizer, strat="low")
     if "c4_unclipped_high" in name:
         return get_c4_unclipped(nsamples, seed, seqlen, tokenizer, strat="high")   
-    if "c4" in name:
+    if "c4_baseline" in name:
+        return get_c4_baseline(nsamples, seed, seqlen, tokenizer)
+    if "__c4__" in name:
         return get_c4(nsamples, seed, seqlen, tokenizer)
